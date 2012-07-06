@@ -22,7 +22,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	res := m{"_content_parent":ex["_id"], "lol": 20}
+	res := m{"_content_parent":ex["_id"], "_content_multiple": []interface{}{ex["_id"], ex["_id"], ex["_id"]},  "lol": 20}
 	fmt.Println(res)
 	resolver.ResolveOne(db, res)
+	fmt.Println(res)
 }

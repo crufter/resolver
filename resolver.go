@@ -3,7 +3,7 @@
 //
 // Now only resolves one level.
 // Later the package will be able to handle cascading reference resolution, now only one level.
-// Can detect circular references, so it won't run in an infinite loop.
+// Will detect circular references, so it won't run in an infinite loop.
 //
 // It will resolve any value in the seed, at any depth which is an mgo.ObjectId, and has a key of the form:
 // _collectionName or optionally _collectionName_fieldName (if there are more than one references in to the same collection)
@@ -12,7 +12,6 @@ package resolver
 import(
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-	"fmt"
 	"strings"
 )
 
@@ -62,22 +61,59 @@ func extractIds(dat interface{}, acc *[]Mapper, parent map[string]interface{}, k
 		for i, v := range val {
 			if slice, is_slice := v.([]interface{}); is_slice && allIsObjId(slice) {
 				*acc = append(*acc, Mapper{Map: &parent,Key: i,Ids: toIdSlice(slice)})
+				val[i] = []bson.M{}
 			} else {
 				extractIds(v, acc, val, i)
 			}
 		}
 	case bson.ObjectId:
 		*acc = append(*acc, Mapper{Map: &parent,Key: key,Ids: []bson.ObjectId{val},Single: true})
-		fmt.Println("lol")
 	}
 }
 
+type m map[string]interface{}
 
-
-func burnThemIn(db *mgo.Database, sep_accs map[string][]Mapper) {
-	for i, v := range sep_accs {
-		db.C(i).Find
+func harvest(ms []Mapper) []bson.ObjectId {
+	ret := []bson.ObjectId{}
+	for _, v := range ms {
+		ret = append(ret, v.Ids...)
 	}
+	return ret
+}
+
+func burnItIn(z bson.M, acc []Mapper, ind map[string]int) {
+	str_id := z["_id"].(bson.ObjectId).Hex()
+	if index, has := ind[str_id]; has {
+		mapper := acc[index]
+		if mapper.Single {
+			(*mapper.Map)[mapper.Key] = z
+		} else {
+			(*mapper.Map)[mapper.Key] = append((*mapper.Map)[mapper.Key].([]interface{}), z)
+		}
+	} else {
+		panic("Unown bug in resolver.")
+	}
+}
+
+func glue(db *mgo.Database, sep_accs map[string][]Mapper, acc []Mapper, ind map[string]int) {
+	for i, v := range sep_accs {
+		ids := harvest(v)
+		var res []interface{}
+		db.C(i).Find(m{"_id": m{"$in": ids}}).All(&res)
+		for _, z := range res {
+			burnItIn(z.(bson.M), acc, ind)
+		}
+	}
+}
+
+func index(accum []Mapper) map[string]int {
+	ret := map[string]int{}
+	for i, v := range accum {
+		for _, z := range v.Ids {
+			ret[z.Hex()] = i
+		}
+	}
+	return ret
 }
 
 func ResolveOne(db *mgo.Database, seed map[string]interface{}) {
@@ -89,7 +125,7 @@ func ResolveAll(db *mgo.Database, seeds []map[string]interface{}) {
 	for _, v := range seeds {
 		extractIds(v, acc, v, "")
 	}
+	ind := index(*acc)
 	sep_accs := separateByColl(*acc)
-	fmt.Println(sep_accs)
-	burnThemIn(db, sep_accs)
+	glue(db, sep_accs, *acc, ind)
 }
