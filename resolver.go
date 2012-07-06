@@ -29,7 +29,7 @@ func allIsObjId(sl []interface{}) bool {
 			return false
 		}
 	}
-	return false
+	return true
 }
 
 func toIdSlice(from []interface{}) []bson.ObjectId {
@@ -60,8 +60,9 @@ func extractIds(dat interface{}, acc *[]Mapper, parent map[string]interface{}, k
 	case map[string]interface{}:
 		for i, v := range val {
 			if slice, is_slice := v.([]interface{}); is_slice && allIsObjId(slice) {
-				*acc = append(*acc, Mapper{Map: &parent,Key: i,Ids: toIdSlice(slice)})
-				val[i] = []bson.M{}
+				m := Mapper{Map: &parent,Key: i,Ids: toIdSlice(slice)}
+				*acc = append(*acc, m)
+				val[i] = []interface{}{}
 			} else {
 				extractIds(v, acc, val, i)
 			}
@@ -88,7 +89,8 @@ func burnItIn(z bson.M, acc []Mapper, ind map[string]int) {
 		if mapper.Single {
 			(*mapper.Map)[mapper.Key] = z
 		} else {
-			(*mapper.Map)[mapper.Key] = append((*mapper.Map)[mapper.Key].([]interface{}), z)
+			slic := (*mapper.Map)[mapper.Key].([]interface{})
+			(*mapper.Map)[mapper.Key] = append(slic, z)
 		}
 	} else {
 		panic("Unown bug in resolver.")
