@@ -62,7 +62,7 @@ func extractIds(dat interface{}, acc *[]Mapper, parent map[string]interface{}, k
 			if slice, is_slice := v.([]interface{}); is_slice && allIsObjId(slice) {
 				m := Mapper{Map: &parent,Key: i,Ids: toIdSlice(slice)}
 				*acc = append(*acc, m)
-				val[i] = []interface{}{}
+				val[i] = make([]interface{}, len(slice))
 			} else {
 				extractIds(v, acc, val, i)
 			}
@@ -74,7 +74,7 @@ func extractIds(dat interface{}, acc *[]Mapper, parent map[string]interface{}, k
 
 type m map[string]interface{}
 
-func harvest(ms []Mapper) []bson.ObjectId {
+func collectIds(ms []Mapper) []bson.ObjectId {
 	ret := []bson.ObjectId{}
 	for _, v := range ms {
 		ret = append(ret, v.Ids...)
@@ -82,24 +82,27 @@ func harvest(ms []Mapper) []bson.ObjectId {
 	return ret
 }
 
-func burnItIn(z bson.M, acc []Mapper, ind map[string]int) {
+func burnItIn(z bson.M, acc []Mapper, ind map[string][][2]int) {
 	str_id := z["_id"].(bson.ObjectId).Hex()
 	if index, has := ind[str_id]; has {
-		mapper := acc[index]
-		if mapper.Single {
-			(*mapper.Map)[mapper.Key] = z
-		} else {
-			slic := (*mapper.Map)[mapper.Key].([]interface{})
-			(*mapper.Map)[mapper.Key] = append(slic, z)
+		for _, v := range index {
+			mapper := acc[v[0]]
+			if mapper.Single {
+				(*mapper.Map)[mapper.Key] = z
+			} else {
+				(*mapper.Map)[mapper.Key].([]interface{})[v[1]] = z
+			}
 		}
 	} else {
 		panic("Unown bug in resolver.")
 	}
 }
 
-func glue(db *mgo.Database, sep_accs map[string][]Mapper, acc []Mapper, ind map[string]int) {
+func queryAndSet(db *mgo.Database, acc []Mapper) {
+	ind := index(*acc)
+	sep_accs := separateByColl(*acc)
 	for i, v := range sep_accs {
-		ids := harvest(v)
+		ids := collectIds(v)
 		var res []interface{}
 		db.C(i).Find(m{"_id": m{"$in": ids}}).All(&res)
 		for _, z := range res {
@@ -108,11 +111,15 @@ func glue(db *mgo.Database, sep_accs map[string][]Mapper, acc []Mapper, ind map[
 	}
 }
 
-func index(accum []Mapper) map[string]int {
-	ret := map[string]int{}
+func index(accum []Mapper) map[string][][2]int {
+	ret := map[string][][2]int{}
 	for i, v := range accum {
-		for _, z := range v.Ids {
-			ret[z.Hex()] = i
+		for j, z := range v.Ids {
+			_, has := ret[z.Hex()]
+			if !has {
+				ret[z.Hex()] = [][2]int{}
+			}
+			ret[z.Hex()] = append(ret[z.Hex()], [2]int{i, j})
 		}
 	}
 	return ret
@@ -127,7 +134,5 @@ func ResolveAll(db *mgo.Database, seeds []map[string]interface{}) {
 	for _, v := range seeds {
 		extractIds(v, acc, v, "")
 	}
-	ind := index(*acc)
-	sep_accs := separateByColl(*acc)
-	glue(db, sep_accs, *acc, ind)
+	queryAndSet(db, *acc)
 }
