@@ -99,8 +99,8 @@ func burnItIn(z bson.M, acc []Mapper, ind map[string][][2]int) {
 }
 
 func queryAndSet(db *mgo.Database, acc []Mapper) {
-	ind := index(*acc)
-	sep_accs := separateByColl(*acc)
+	ind := index(acc)
+	sep_accs := separateByColl(acc)
 	for i, v := range sep_accs {
 		ids := collectIds(v)
 		var res []interface{}
@@ -125,14 +125,14 @@ func index(accum []Mapper) map[string][][2]int {
 	return ret
 }
 
-func ResolveOne(db *mgo.Database, seed map[string]interface{}) {
-	ResolveAll(db, []map[string]interface{}{seed})
+func ResolveOne(db *mgo.Database, seed interface{}) {
+	ResolveAll(db, []interface{}{seed})
 }
 
-func ResolveAll(db *mgo.Database, seeds []map[string]interface{}) {
+func ResolveAll(db *mgo.Database, seeds []interface{}) {
 	acc := &[]Mapper{}
 	for _, v := range seeds {
-		extractIds(v, acc, v, "")
+		extractIds(v, acc, v.(map[string]interface{}), "")
 	}
 	queryAndSet(db, *acc)
 }

@@ -29,9 +29,9 @@ func main() {
 	if err2 != nil {
 		panic(err2)
 	}
-	res := []map[string]interface{}{
-		m{"_content_parent":ex["_id"], "_content_multiple": []interface{}{ex2["_id"], ex["_id"], ex["_id"]},  "lol": 20},
-		m{"_content_parent":ex2["_id"], "_content_multiple": []interface{}{ex2["_id"], ex2["_id"]},  "lol": 20},
+	res := []interface{}{
+		map[string]interface{}{"_content_parent":ex["_id"], "_content_multiple": []interface{}{ex2["_id"], ex["_id"], ex["_id"]},  "lol": 20},
+		map[string]interface{}{"_content_parent":ex2["_id"], "_content_multiple": []interface{}{ex2["_id"], ex2["_id"]},  "lol": 20},
 	}
 	//fmt.Println(res)
 	resolver.ResolveAll(db, res)
