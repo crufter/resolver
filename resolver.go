@@ -2,10 +2,10 @@
 // Can only work in the same database for now.
 //
 // Now only resolves one level.
-// Later the package will be able to handle cascading reference resolution, now only one level.
-// Will detect circular references, so it won't run in an infinite loop.
+// Later the package will be able to handle cascading reference resolution.
+// Will detect circular references, so it won't run into an infinite loop.
 //
-// It will resolve any value in the seed, at any depth which is an mgo.ObjectId, and has a key of the form:
+// It will resolve any value in the seed, at any depth which is a bson.ObjectId or []bson.ObjectId, and has a key of the form:
 // _collectionName or optionally _collectionName_fieldName (if there are more than one references in to the same collection)
 package resolver
 
