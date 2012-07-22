@@ -43,7 +43,7 @@ func toIdSlice(from []interface{}) []bson.ObjectId {
 func separateByColl(accum []Mapper) map[string][]Mapper {
 	ret := map[string][]Mapper{}
 	for _, v := range accum {
-		if string(v.Key[0]) == string("_") {
+		if string(v.Key[0]) == "_" {
 			collname := strings.Split(v.Key, "_")[1]
 			_, has := ret[collname]
 			if !has {
@@ -59,7 +59,7 @@ func extractIds(dat interface{}, acc *[]Mapper, parent map[string]interface{}, k
 	switch val := dat.(type) {
 	case map[string]interface{}:
 		for i, v := range val {
-			if slice, is_slice := v.([]interface{}); is_slice && allIsObjId(slice) {
+			if slice, is_slice := v.([]interface{}); is_slice && allIsObjId(slice) && string(i[0]) == "_" {
 				m := Mapper{Map: &parent,Key: i,Ids: toIdSlice(slice)}
 				*acc = append(*acc, m)
 				val[i] = make([]interface{}, len(slice))
