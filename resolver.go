@@ -59,6 +59,7 @@ func extractIds(dat interface{}, acc *[]Mapper, parent map[string]interface{}, k
 	switch val := dat.(type) {
 	case map[string]interface{}:
 		for i, v := range val {
+			if i == "_id" { continue }
 			if slice, is_slice := v.([]interface{}); is_slice && allIsObjId(slice) && string(i[0]) == "_" {
 				m := Mapper{Map: &parent,Key: i,Ids: toIdSlice(slice)}
 				*acc = append(*acc, m)
