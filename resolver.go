@@ -99,13 +99,17 @@ func burnItIn(z bson.M, acc []Mapper, ind map[string][][2]int) {
 	}
 }
 
-func queryAndSet(db *mgo.Database, acc []Mapper) {
+func queryAndSet(db *mgo.Database, acc []Mapper, keys map[string]interface{}) {
 	ind := index(acc)
 	sep_accs := separateByColl(acc)
 	for i, v := range sep_accs {
 		ids := collectIds(v)
 		var res []interface{}
-		db.C(i).Find(m{"_id": m{"$in": ids}}).All(&res)
+		q := db.C(i).Find(m{"_id": m{"$in": ids}})
+		if keys != nil {
+			q.Select(keys)
+		}
+		q.All(&res)
 		for _, z := range res {
 			burnItIn(z.(bson.M), acc, ind)
 		}
@@ -126,14 +130,14 @@ func index(accum []Mapper) map[string][][2]int {
 	return ret
 }
 
-func ResolveOne(db *mgo.Database, seed interface{}) {
-	ResolveAll(db, []interface{}{seed})
+func ResolveOne(db *mgo.Database, seed interface{}, keys map[string]interface{}) {
+	ResolveAll(db, []interface{}{seed}, keys)
 }
 
-func ResolveAll(db *mgo.Database, seeds []interface{}) {
+func ResolveAll(db *mgo.Database, seeds []interface{}, keys map[string]interface{}) {
 	acc := &[]Mapper{}
 	for _, v := range seeds {
 		extractIds(v, acc, v.(map[string]interface{}), "")
 	}
-	queryAndSet(db, *acc)
+	queryAndSet(db, *acc, keys)
 }
