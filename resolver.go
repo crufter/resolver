@@ -13,7 +13,6 @@ import(
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"strings"
-	"fmt"
 )
 
 type Mapper struct{
@@ -62,7 +61,6 @@ func extractIds(dat interface{}, acc *[]Mapper, parent map[string]interface{}, k
 		for i, v := range val {
 			if i == "_id" { continue }
 			if slice, is_slice := v.([]interface{}); is_slice && allIsObjId(slice) && string(i[0]) == "_" {
-				fmt.Println(val, i)
 				m := Mapper{Map: &val,Key: i,Ids: toIdSlice(slice)}
 				*acc = append(*acc, m)
 				val[i] = make([]interface{}, len(slice))
@@ -93,8 +91,6 @@ func burnItIn(z bson.M, acc []Mapper, ind map[string][][2]int) {
 			if mapper.Single {
 				(*mapper.Map)[mapper.Key] = z
 			} else {
-				_, has := (*mapper.Map)[mapper.Key]
-				fmt.Println(has)
 				(*mapper.Map)[mapper.Key].([]interface{})[v[1]] = z
 			}
 		}
