@@ -7,7 +7,7 @@ What does it do?
 ========
 You pass in a *mgo.Database (db) and a query result (v) to
 ```
-resolver.Resolve(db, v)
+resolver.Resolve(db, v, nil)
 ```
 
 And this package will resolve all "foreign key references" which value is an instance of bson.ObjectId, and which key has the form of:
