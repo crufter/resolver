@@ -68,6 +68,13 @@ func separateByColl(accum []Mapper) map[string][]Mapper {
 // Caution: bson.M s are intentionally not handled here.
 func extractIds(dat interface{}, acc *[]Mapper, parent map[string]interface{}, key string) {
 	switch val := dat.(type) {
+	case []interface{}:
+		// if hasObjId(slice)...		// This is a yet not handled corner case.
+		for _, v := range val {
+			mapval, ok := v.(map[string]interface{})
+			if !ok { continue }
+			extractIds(v, acc, mapval, "")
+		}
 	case map[string]interface{}:
 		for i, v := range val {
 			if i == "_id" { continue }
@@ -79,7 +86,8 @@ func extractIds(dat interface{}, acc *[]Mapper, parent map[string]interface{}, k
 			}
 		}
 	case bson.ObjectId:
-		*acc = append(*acc, Mapper{Map: &parent,Key: key,Ids: []bson.ObjectId{val},Single: true})
+		m := Mapper{Map: &parent,Key: key,Ids: []bson.ObjectId{val},Single: true}
+		*acc = append(*acc, m)
 	case bson.M:
 		panic("Please convert all bson.M maps to map[string]interface{} in query results.")
 	}
