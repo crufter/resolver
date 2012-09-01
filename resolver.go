@@ -13,6 +13,7 @@ import(
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"strings"
+	"fmt"
 )
 
 type Mapper struct{
@@ -122,7 +123,8 @@ func query(db *mgo.Database, collname string, ids []bson.ObjectId, keys map[stri
 	if keys != nil {
 		q.Select(keys)
 	}
-	q.All(&res)
+	err := q.All(&res)
+	if err != nil { panic(err) }
 	return res
 }
 
@@ -157,14 +159,20 @@ func index(accum []Mapper) map[string][][2]int {
 	return ret
 }
 
-func ResolveOne(db *mgo.Database, seed interface{}, keys map[string]interface{}) {
-	ResolveAll(db, []interface{}{seed}, keys)
+func ResolveOne(db *mgo.Database, seed interface{}, keys map[string]interface{}) error {
+	return ResolveAll(db, []interface{}{seed}, keys)
 }
 
-func ResolveAll(db *mgo.Database, seeds []interface{}, keys map[string]interface{}) {
+func ResolveAll(db *mgo.Database, seeds []interface{}, keys map[string]interface{}) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf(fmt.Sprint(r))
+		}
+	}()
 	acc := &[]Mapper{}
 	for _, v := range seeds {
 		extractIds(v, acc, v.(map[string]interface{}), "")
 	}
 	queryAndSet(db, *acc, keys)
+	return nil
 }
