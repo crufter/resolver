@@ -9,18 +9,18 @@
 // _collectionName or optionally _collectionName_fieldName (if there are more than one references in to the same collection)
 package resolver
 
-import(
+import (
+	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"strings"
-	"fmt"
 )
 
-type Mapper struct{
-	Map 		*map[string]interface{}
-	Key 		string
-	Ids			[]bson.ObjectId
-	Single 		bool
+type Mapper struct {
+	Map    *map[string]interface{}
+	Key    string
+	Ids    []bson.ObjectId
+	Single bool
 }
 
 func hasObjId(sl []interface{}) bool {
@@ -72,21 +72,25 @@ func extractIds(dat interface{}, acc *[]Mapper, parent map[string]interface{}, k
 		// if hasObjId(slice)...		// This is a yet not handled corner case.
 		for _, v := range val {
 			mapval, ok := v.(map[string]interface{})
-			if !ok { continue }
+			if !ok {
+				continue
+			}
 			extractIds(v, acc, mapval, "")
 		}
 	case map[string]interface{}:
 		for i, v := range val {
-			if i == "_id" { continue }
+			if i == "_id" {
+				continue
+			}
 			if slice, is_slice := v.([]interface{}); is_slice && hasObjId(slice) && string(i[0]) == "_" {
-				m := Mapper{Map: &val,Key: i,Ids: toIdSlice(slice)}
+				m := Mapper{Map: &val, Key: i, Ids: toIdSlice(slice)}
 				*acc = append(*acc, m)
 			} else {
 				extractIds(v, acc, val, i)
 			}
 		}
 	case bson.ObjectId:
-		m := Mapper{Map: &parent,Key: key,Ids: []bson.ObjectId{val},Single: true}
+		m := Mapper{Map: &parent, Key: key, Ids: []bson.ObjectId{val}, Single: true}
 		*acc = append(*acc, m)
 	case bson.M:
 		panic("Please convert all bson.M maps to map[string]interface{} in query results.")
@@ -101,7 +105,7 @@ func collectIds(ms []Mapper) []bson.ObjectId {
 	for _, v := range ms {
 		for _, z := range v.Ids {
 			if z != "" {
-				ret = append(ret, z)		// Here to support non bson.ObjectIds too.
+				ret = append(ret, z) // Here to support non bson.ObjectIds too.
 			}
 		}
 	}
@@ -132,7 +136,9 @@ func query(db *mgo.Database, collname string, ids []bson.ObjectId, keys map[stri
 		q.Select(keys)
 	}
 	err := q.All(&res)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	return res
 }
 
@@ -156,7 +162,9 @@ func index(accum []Mapper) map[string][][2]int {
 	ret := map[string][][2]int{}
 	for i, v := range accum {
 		for j, z := range v.Ids {
-			if z == "" { continue }		// Added to support []interface{}s where not all members are bson.ObjectIds.
+			if z == "" {
+				continue
+			} // Added to support []interface{}s where not all members are bson.ObjectIds.
 			_, has := ret[z.Hex()]
 			if !has {
 				ret[z.Hex()] = [][2]int{}
