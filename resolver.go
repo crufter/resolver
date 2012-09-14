@@ -90,8 +90,10 @@ func extractIds(dat interface{}, acc *[]Mapper, parent map[string]interface{}, k
 			}
 		}
 	case bson.ObjectId:
-		m := Mapper{Map: &parent, Key: key, Ids: []bson.ObjectId{val}, Single: true}
-		*acc = append(*acc, m)
+		if string(key[0]) == "_" {
+			m := Mapper{Map: &parent, Key: key, Ids: []bson.ObjectId{val}, Single: true}
+			*acc = append(*acc, m)
+		}
 	case bson.M:
 		panic("Please convert all bson.M maps to map[string]interface{} in query results.")
 	}
@@ -105,7 +107,7 @@ func collectIds(ms []Mapper) []bson.ObjectId {
 	for _, v := range ms {
 		for _, z := range v.Ids {
 			if z != "" {
-				ret = append(ret, z) // Here to support non bson.ObjectIds too.
+				ret = append(ret, z) 	// Added to support []interface{}s where not all members are bson.ObjectIds.
 			}
 		}
 	}
@@ -125,7 +127,7 @@ func burnItIn(z bson.M, acc []Mapper, ind map[string][][2]int) {
 			}
 		}
 	} else {
-		panic("Unown bug in resolver.")
+		panic("Unkown bug in resolver.")
 	}
 }
 
@@ -147,8 +149,8 @@ func queryAndSet(db *mgo.Database, acc []Mapper, keys map[string]interface{}) {
 	ind := index(acc)
 	sep_accs := separateByColl(acc)
 	for i, v := range sep_accs {
-		ids := collectIds(v)
-		res := query(db, i, ids, keys)
+		ids := collectIds(v)				// TODO
+		res := query(db, i, ids, keys)		// TODO: It's inefficient ATM, we should only collect and query the ids belonging to the given collection, not all of them.
 		for _, z := range res {
 			burnItIn(z.(bson.M), acc, ind)
 		}
@@ -162,14 +164,15 @@ func index(accum []Mapper) map[string][][2]int {
 	ret := map[string][][2]int{}
 	for i, v := range accum {
 		for j, z := range v.Ids {
-			if z == "" {
+			if z == "" {	// Added to support []interface{}s where not all members are bson.ObjectIds.
 				continue
-			} // Added to support []interface{}s where not all members are bson.ObjectIds.
-			_, has := ret[z.Hex()]
-			if !has {
-				ret[z.Hex()] = [][2]int{}
 			}
-			ret[z.Hex()] = append(ret[z.Hex()], [2]int{i, j})
+			hexid := z.Hex()
+			_, has := ret[hexid]
+			if !has {
+				ret[hexid] = [][2]int{}
+			}
+			ret[hexid] = append(ret[hexid], [2]int{i, j})
 		}
 	}
 	return ret
